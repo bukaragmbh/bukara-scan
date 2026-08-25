@@ -273,9 +273,12 @@
       document.getElementById('scanBtn').textContent = '✕ Abbrechen';
       html5QrCode = new Html5Qrcode('reader');
 
-      // Höhere Auflösung anfragen -> mehr Bilddetail, auch aus etwas größerem Abstand lesbar
+      // "environment" als weicher (ideal) Wunsch statt harter (exact) Vorgabe:
+      // wählt auf Handys zuverlässig die Rückkamera, bricht aber nicht hart ab,
+      // falls (z.B. am Laptop) keine Rückkamera existiert. Nur EIN start()-Aufruf,
+      // um den "already under transition"-Konflikt der Bibliothek zu vermeiden.
       var videoConstraints = {
-        facingMode: { exact: 'environment' },
+        facingMode: 'environment',
         width: { ideal: 1920 },
         height: { ideal: 1080 }
       };
@@ -287,22 +290,12 @@
         onScanFailure
       ).then(function () {
         setupPostStartControls();
-      }).catch(function (err1) {
-        // Fallback: keine "exact environment"-Kamera (z.B. Laptop-Webcam)
-        html5QrCode.start(
-          { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
-          scanConfig(),
-          onScanSuccess,
-          onScanFailure
-        ).then(function () {
-          setupPostStartControls();
-        }).catch(function (err2) {
-          var msg = (err2 && err2.message) ? err2.message : String(err2);
-          errorDiv.textContent = 'Kamera konnte nicht gestartet werden: ' + msg;
-          scanning = false;
-          document.getElementById('scanBtn').textContent = '📷 Scannen';
-          readerDiv.classList.remove('active');
-        });
+      }).catch(function (err) {
+        var msg = (err && err.message) ? err.message : String(err);
+        errorDiv.textContent = 'Kamera konnte nicht gestartet werden: ' + msg;
+        scanning = false;
+        document.getElementById('scanBtn').textContent = '📷 Scannen';
+        readerDiv.classList.remove('active');
       });
     });
 
