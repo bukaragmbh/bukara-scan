@@ -129,6 +129,17 @@
   #zoomSlider {
     flex: 1;
   }
+  .scan-debug {
+    font-size: 11px;
+    color: #888;
+    margin-top: 8px;
+    word-break: break-all;
+    background: #f0f0f0;
+    padding: 6px;
+    border-radius: 4px;
+    display: none;
+  }
+  .scan-debug.active { display: block; }
 </style>
 </head>
 <body>
@@ -158,6 +169,7 @@
         </div>
       </div>
       <div id="scanError" class="scan-error"></div>
+      <div id="scanDebug" class="scan-debug"></div>
 
       <label for="bemerkung">Bemerkung</label>
       <textarea id="bemerkung" name="bemerkung" rows="3"></textarea>
@@ -213,6 +225,10 @@
       try {
         var caps = html5QrCode.getRunningTrackCapabilities();
 
+        var debugDiv = document.getElementById('scanDebug');
+        debugDiv.classList.add('active');
+        debugDiv.textContent = 'Kamera-Fähigkeiten: ' + JSON.stringify(caps);
+
         var torchBtn = document.getElementById('torchBtn');
         if (caps && caps.torch) {
           torchBtn.style.display = 'inline-block';
@@ -235,8 +251,15 @@
           zoomWrapper.style.display = 'none';
         }
       } catch (e) {
-        // Fähigkeiten nicht abfragbar - Steuerelemente einfach verborgen lassen
+        var debugDiv = document.getElementById('scanDebug');
+        debugDiv.classList.add('active');
+        debugDiv.textContent = 'Kamera-Fähigkeiten nicht abfragbar: ' + e.message;
       }
+
+      // Nachträglich höhere Auflösung versuchen (best effort, bricht nichts falls nicht unterstützt)
+      html5QrCode.applyVideoConstraints({
+        advanced: [{ width: 1920, height: 1080 }]
+      }).catch(function () {});
     }
 
     document.getElementById('torchBtn').addEventListener('click', function () {
