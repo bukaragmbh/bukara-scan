@@ -277,11 +277,9 @@
       // wählt auf Handys zuverlässig die Rückkamera, bricht aber nicht hart ab,
       // falls (z.B. am Laptop) keine Rückkamera existiert. Nur EIN start()-Aufruf,
       // um den "already under transition"-Konflikt der Bibliothek zu vermeiden.
-      var videoConstraints = {
-        facingMode: 'environment',
-        width: { ideal: 1920 },
-        height: { ideal: 1080 }
-      };
+      // WICHTIG: dieses Objekt darf laut Bibliothek nur genau 1 Schlüssel haben,
+      // Auflösung kann hier nicht mit übergeben werden.
+      var videoConstraints = { facingMode: 'environment' };
 
       html5QrCode.start(
         videoConstraints,
