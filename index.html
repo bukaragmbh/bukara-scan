@@ -95,6 +95,40 @@
     font-size: 13px;
     margin-top: 6px;
   }
+  .scan-controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+  .control-button {
+    margin-top: 0;
+    width: auto;
+    padding: 8px 14px;
+    font-size: 14px;
+    background: #2c3e40;
+  }
+  .control-button.active {
+    background: #f9ab00;
+  }
+  .control-button:active { opacity: 0.85; }
+  #zoomWrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 160px;
+  }
+  .zoom-label {
+    font-size: 13px;
+    font-weight: bold;
+    margin: 0;
+    white-space: nowrap;
+  }
+  #zoomSlider {
+    flex: 1;
+  }
 </style>
 </head>
 <body>
@@ -116,6 +150,13 @@
         <button type="button" id="scanBtn" class="scan-button">📷 Scannen</button>
       </div>
       <div id="reader"></div>
+      <div id="scanControls" class="scan-controls">
+        <button type="button" id="torchBtn" class="control-button" style="display:none;">🔦 Blitz an</button>
+        <div id="zoomWrapper" style="display:none;">
+          <label class="zoom-label">🔍 Zoom</label>
+          <input type="range" id="zoomSlider" min="1" max="5" step="0.1" value="1">
+        </div>
+      </div>
       <div id="scanError" class="scan-error"></div>
 
       <label for="bemerkung">Bemerkung</label>
@@ -165,6 +206,58 @@
       };
     }
 
+    var torchOn = false;
+
+    function setupPostStartControls() {
+      // Kamera-Fähigkeiten prüfen (Blitz, Zoom) und Steuerelemente ggf. einblenden
+      try {
+        var caps = html5QrCode.getRunningTrackCapabilities();
+
+        var torchBtn = document.getElementById('torchBtn');
+        if (caps && caps.torch) {
+          torchBtn.style.display = 'inline-block';
+          torchOn = false;
+          torchBtn.textContent = '🔦 Blitz an';
+          torchBtn.classList.remove('active');
+        } else {
+          torchBtn.style.display = 'none';
+        }
+
+        var zoomWrapper = document.getElementById('zoomWrapper');
+        var zoomSlider = document.getElementById('zoomSlider');
+        if (caps && caps.zoom && caps.zoom.max > caps.zoom.min) {
+          zoomWrapper.style.display = 'flex';
+          zoomSlider.min = caps.zoom.min;
+          zoomSlider.max = caps.zoom.max;
+          zoomSlider.step = caps.zoom.step || 0.1;
+          zoomSlider.value = caps.zoom.min;
+        } else {
+          zoomWrapper.style.display = 'none';
+        }
+      } catch (e) {
+        // Fähigkeiten nicht abfragbar - Steuerelemente einfach verborgen lassen
+      }
+    }
+
+    document.getElementById('torchBtn').addEventListener('click', function () {
+      torchOn = !torchOn;
+      html5QrCode.applyVideoConstraints({
+        advanced: [{ torch: torchOn }]
+      }).then(function () {
+        var btn = document.getElementById('torchBtn');
+        btn.textContent = torchOn ? '🔦 Blitz aus' : '🔦 Blitz an';
+        btn.classList.toggle('active', torchOn);
+      }).catch(function () {
+        torchOn = !torchOn; // zurücksetzen, falls fehlgeschlagen
+      });
+    });
+
+    document.getElementById('zoomSlider').addEventListener('input', function (e) {
+      html5QrCode.applyVideoConstraints({
+        advanced: [{ zoom: parseFloat(e.target.value) }]
+      }).catch(function () {});
+    });
+
     document.getElementById('scanBtn').addEventListener('click', function () {
       var readerDiv = document.getElementById('reader');
       var errorDiv = document.getElementById('scanError');
@@ -180,21 +273,30 @@
       document.getElementById('scanBtn').textContent = '✕ Abbrechen';
       html5QrCode = new Html5Qrcode('reader');
 
-      // 1. Versuch: garantiert die Rückkamera (exact) - Standardfall am Handy
+      // Höhere Auflösung anfragen -> mehr Bilddetail, auch aus etwas größerem Abstand lesbar
+      var videoConstraints = {
+        facingMode: { exact: 'environment' },
+        width: { ideal: 1920 },
+        height: { ideal: 1080 }
+      };
+
       html5QrCode.start(
-        { facingMode: { exact: 'environment' } },
+        videoConstraints,
         scanConfig(),
         onScanSuccess,
         onScanFailure
-      ).catch(function (err1) {
-        // 2. Versuch: keine "exact environment"-Kamera vorhanden (z.B. Laptop-Webcam)
-        // -> irgendeine verfügbare Kamera nutzen, bevorzugt rückseitig falls möglich
+      ).then(function () {
+        setupPostStartControls();
+      }).catch(function (err1) {
+        // Fallback: keine "exact environment"-Kamera (z.B. Laptop-Webcam)
         html5QrCode.start(
-          { facingMode: 'environment' },
+          { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
           scanConfig(),
           onScanSuccess,
           onScanFailure
-        ).catch(function (err2) {
+        ).then(function () {
+          setupPostStartControls();
+        }).catch(function (err2) {
           var msg = (err2 && err2.message) ? err2.message : String(err2);
           errorDiv.textContent = 'Kamera konnte nicht gestartet werden: ' + msg;
           scanning = false;
@@ -209,6 +311,8 @@
         html5QrCode.stop().then(function () {
           document.getElementById('reader').classList.remove('active');
           document.getElementById('scanBtn').textContent = '📷 Scannen';
+          document.getElementById('torchBtn').style.display = 'none';
+          document.getElementById('zoomWrapper').style.display = 'none';
           scanning = false;
         }).catch(function () {
           scanning = false;
