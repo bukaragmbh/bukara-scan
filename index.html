@@ -225,10 +225,6 @@
       try {
         var caps = html5QrCode.getRunningTrackCapabilities();
 
-        var debugDiv = document.getElementById('scanDebug');
-        debugDiv.classList.add('active');
-        debugDiv.textContent = 'Kamera-Fähigkeiten: ' + JSON.stringify(caps);
-
         var torchBtn = document.getElementById('torchBtn');
         if (caps && caps.torch) {
           torchBtn.style.display = 'inline-block';
@@ -251,9 +247,7 @@
           zoomWrapper.style.display = 'none';
         }
       } catch (e) {
-        var debugDiv = document.getElementById('scanDebug');
-        debugDiv.classList.add('active');
-        debugDiv.textContent = 'Kamera-Fähigkeiten nicht abfragbar: ' + e.message;
+        // Fähigkeiten nicht abfragbar - Steuerelemente einfach verborgen lassen
       }
 
       // Nachträglich höhere Auflösung versuchen (best effort, bricht nichts falls nicht unterstützt)
