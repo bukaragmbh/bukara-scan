@@ -136,6 +136,35 @@
     var html5QrCode = null;
     var scanning = false;
 
+    function onScanSuccess(decodedText) {
+      document.getElementById('planId').value = decodedText;
+      stopScanner();
+    }
+    function onScanFailure(errorMessage) {
+      // laufende Scan-Versuche ohne Treffer - ignorieren
+    }
+    function scanConfig() {
+      return {
+        fps: 10,
+        qrbox: { width: 280, height: 140 },
+        formatsToSupport: [
+          Html5QrcodeSupportedFormats.QR_CODE,
+          Html5QrcodeSupportedFormats.CODE_128,
+          Html5QrcodeSupportedFormats.CODE_39,
+          Html5QrcodeSupportedFormats.CODE_93,
+          Html5QrcodeSupportedFormats.CODABAR,
+          Html5QrcodeSupportedFormats.EAN_13,
+          Html5QrcodeSupportedFormats.EAN_8,
+          Html5QrcodeSupportedFormats.UPC_A,
+          Html5QrcodeSupportedFormats.UPC_E,
+          Html5QrcodeSupportedFormats.ITF
+        ],
+        experimentalFeatures: {
+          useBarCodeDetectorIfSupported: true
+        }
+      };
+    }
+
     document.getElementById('scanBtn').addEventListener('click', function () {
       var readerDiv = document.getElementById('reader');
       var errorDiv = document.getElementById('scanError');
@@ -149,31 +178,29 @@
       readerDiv.classList.add('active');
       scanning = true;
       document.getElementById('scanBtn').textContent = '✕ Abbrechen';
+      html5QrCode = new Html5Qrcode('reader');
 
-      Html5Qrcode.getCameras().then(function (devices) {
-        if (!devices || devices.length === 0) {
-          throw new Error('Keine Kamera gefunden.');
-        }
-        var camera = devices.find(function (d) {
-          return /back|rück|rear|environment/i.test(d.label);
-        }) || devices[devices.length - 1];
-
-        html5QrCode = new Html5Qrcode('reader');
-        return html5QrCode.start(
-          camera.id,
-          { fps: 10, qrbox: { width: 250, height: 150 } },
-          function (decodedText) {
-            document.getElementById('planId').value = decodedText;
-            stopScanner();
-          },
-          function (errorMessage) {}
-        );
-      }).catch(function (err) {
-        var msg = (err && err.message) ? err.message : String(err);
-        errorDiv.textContent = 'Kamera konnte nicht gestartet werden: ' + msg;
-        scanning = false;
-        document.getElementById('scanBtn').textContent = '📷 Scannen';
-        readerDiv.classList.remove('active');
+      // 1. Versuch: garantiert die Rückkamera (exact) - Standardfall am Handy
+      html5QrCode.start(
+        { facingMode: { exact: 'environment' } },
+        scanConfig(),
+        onScanSuccess,
+        onScanFailure
+      ).catch(function (err1) {
+        // 2. Versuch: keine "exact environment"-Kamera vorhanden (z.B. Laptop-Webcam)
+        // -> irgendeine verfügbare Kamera nutzen, bevorzugt rückseitig falls möglich
+        html5QrCode.start(
+          { facingMode: 'environment' },
+          scanConfig(),
+          onScanSuccess,
+          onScanFailure
+        ).catch(function (err2) {
+          var msg = (err2 && err2.message) ? err2.message : String(err2);
+          errorDiv.textContent = 'Kamera konnte nicht gestartet werden: ' + msg;
+          scanning = false;
+          document.getElementById('scanBtn').textContent = '📷 Scannen';
+          readerDiv.classList.remove('active');
+        });
       });
     });
 
