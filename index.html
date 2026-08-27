@@ -105,11 +105,17 @@
     border-radius: 4px;
     overflow: hidden;
     border: 2px solid #00A597;
-    max-width: 240px;
+    max-width: 280px;
+    max-height: 100px;
     margin-left: auto;
     margin-right: auto;
+    background: #000;
   }
-  #reader.active, #readerKunde.active { display: block; }
+  #reader.active, #readerKunde.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
   #reader video, #readerKunde video,
   #reader img, #readerKunde img {
     width: 100% !important;
@@ -402,4 +408,3 @@
   </script>
 </body>
 </html>
-
