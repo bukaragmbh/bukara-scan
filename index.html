@@ -135,7 +135,7 @@
     background: #f9ab00;
   }
   .control-button:active { opacity: 0.85; }
-  #zoomWrapper {
+  #zoomWrapper, #zoomWrapperKunde {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -193,12 +193,19 @@
       <div id="scanError" class="scan-error"></div>
       <div id="scanDebug" class="scan-debug"></div>
 
-      <label for="kunde">Kunde <span class="optional-hint">(nur beim allerersten Scan)</span></label>
+      <label for="kunde">Kunde <span class="optional-hint">(nur beim allerersten Scan, z.B. Wareneingang)</span></label>
       <div class="planid-row">
         <input type="text" id="kunde" name="kunde">
         <button type="button" id="scanKundeBtn" class="scan-button">📷 Scannen</button>
       </div>
       <div id="readerKunde"></div>
+      <div id="scanControlsKunde" class="scan-controls">
+        <button type="button" id="torchBtnKunde" class="control-button" style="display:none;">🔦 Blitz an</button>
+        <div id="zoomWrapperKunde" style="display:none;">
+          <label class="zoom-label">🔍 Zoom</label>
+          <input type="range" id="zoomSliderKunde" min="1" max="5" step="0.1" value="1">
+        </div>
+      </div>
       <div id="scanErrorKunde" class="scan-error"></div>
 
       <label for="bemerkung">Bemerkung</label>
@@ -250,12 +257,18 @@
 
     var torchOn = false;
 
+    // Suffix ist '' für den Haupt-Scanner (Plan-ID) oder 'Kunde' für den Kunde-Scanner,
+    // damit dieselbe Logik die jeweils passenden Steuerelemente anspricht.
+    function controlsSuffixFor(readerDivId) {
+      return readerDivId === 'readerKunde' ? 'Kunde' : '';
+    }
+
     function setupPostStartControls(readerDivId) {
-      if (readerDivId !== 'reader') return;
+      var suffix = controlsSuffixFor(readerDivId);
       try {
         var caps = html5QrCode.getRunningTrackCapabilities();
 
-        var torchBtn = document.getElementById('torchBtn');
+        var torchBtn = document.getElementById('torchBtn' + suffix);
         if (caps && caps.torch) {
           torchBtn.style.display = 'inline-block';
           torchOn = false;
@@ -265,8 +278,8 @@
           torchBtn.style.display = 'none';
         }
 
-        var zoomWrapper = document.getElementById('zoomWrapper');
-        var zoomSlider = document.getElementById('zoomSlider');
+        var zoomWrapper = document.getElementById('zoomWrapper' + suffix);
+        var zoomSlider = document.getElementById('zoomSlider' + suffix);
         if (caps && caps.zoom && caps.zoom.max > caps.zoom.min) {
           zoomWrapper.style.display = 'flex';
           zoomSlider.min = caps.zoom.min;
@@ -285,24 +298,32 @@
       }).catch(function () {});
     }
 
-    document.getElementById('torchBtn').addEventListener('click', function () {
-      torchOn = !torchOn;
-      html5QrCode.applyVideoConstraints({
-        advanced: [{ torch: torchOn }]
-      }).then(function () {
-        var btn = document.getElementById('torchBtn');
-        btn.textContent = torchOn ? '🔦 Blitz aus' : '🔦 Blitz an';
-        btn.classList.toggle('active', torchOn);
-      }).catch(function () {
-        torchOn = !torchOn; // zurücksetzen, falls fehlgeschlagen
+    function attachTorchHandler(btnId) {
+      document.getElementById(btnId).addEventListener('click', function () {
+        torchOn = !torchOn;
+        html5QrCode.applyVideoConstraints({
+          advanced: [{ torch: torchOn }]
+        }).then(function () {
+          var btn = document.getElementById(btnId);
+          btn.textContent = torchOn ? '🔦 Blitz aus' : '🔦 Blitz an';
+          btn.classList.toggle('active', torchOn);
+        }).catch(function () {
+          torchOn = !torchOn; // zurücksetzen, falls fehlgeschlagen
+        });
       });
-    });
+    }
+    function attachZoomHandler(sliderId) {
+      document.getElementById(sliderId).addEventListener('input', function (e) {
+        html5QrCode.applyVideoConstraints({
+          advanced: [{ zoom: parseFloat(e.target.value) }]
+        }).catch(function () {});
+      });
+    }
 
-    document.getElementById('zoomSlider').addEventListener('input', function (e) {
-      html5QrCode.applyVideoConstraints({
-        advanced: [{ zoom: parseFloat(e.target.value) }]
-      }).catch(function () {});
-    });
+    attachTorchHandler('torchBtn');
+    attachTorchHandler('torchBtnKunde');
+    attachZoomHandler('zoomSlider');
+    attachZoomHandler('zoomSliderKunde');
 
     function startScannerFor(targetInputId, readerDivId, errorDivId, btnId) {
       var readerDiv = document.getElementById(readerDivId);
@@ -366,6 +387,8 @@
           document.getElementById(btnId).textContent = '📷 Scannen';
           document.getElementById('torchBtn').style.display = 'none';
           document.getElementById('zoomWrapper').style.display = 'none';
+          document.getElementById('torchBtnKunde').style.display = 'none';
+          document.getElementById('zoomWrapperKunde').style.display = 'none';
           scanning = false;
         }).catch(function () {
           scanning = false;
