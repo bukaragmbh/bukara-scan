@@ -246,7 +246,12 @@
     function scanConfig() {
       return {
         fps: 10,
-        qrbox: { width: 130, height: 32 },
+        qrbox: function (viewfinderWidth, viewfinderHeight) {
+          var edge = Math.min(viewfinderWidth, viewfinderHeight);
+          var boxWidth = Math.floor(Math.min(viewfinderWidth, edge * 2.2) * 0.92);
+          var boxHeight = Math.floor(Math.min(viewfinderHeight, edge) * 0.35);
+          return { width: boxWidth, height: boxHeight };
+        },
         formatsToSupport: [
           Html5QrcodeSupportedFormats.QR_CODE,
           Html5QrcodeSupportedFormats.CODE_128,
