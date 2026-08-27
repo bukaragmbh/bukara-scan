@@ -105,8 +105,18 @@
     border-radius: 4px;
     overflow: hidden;
     border: 2px solid #00A597;
+    max-width: 240px;
+    max-height: 240px;
+    margin-left: auto;
+    margin-right: auto;
   }
   #reader.active, #readerKunde.active { display: block; }
+  #reader video, #readerKunde video,
+  #reader img, #readerKunde img {
+    width: 100% !important;
+    height: 240px !important;
+    object-fit: cover !important;
+  }
   .scan-error {
     color: #d93025;
     font-size: 13px;
@@ -236,7 +246,7 @@
     function scanConfig() {
       return {
         fps: 10,
-        qrbox: { width: 280, height: 140 },
+        qrbox: { width: 180, height: 100 },
         formatsToSupport: [
           Html5QrcodeSupportedFormats.QR_CODE,
           Html5QrcodeSupportedFormats.CODE_128,
