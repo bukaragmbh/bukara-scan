@@ -106,14 +106,19 @@
     overflow: hidden;
     border: 2px solid #00A597;
     max-width: 240px;
+    max-height: 130px;
     margin-left: auto;
     margin-right: auto;
+    position: relative;
   }
   #reader.active, #readerKunde.active { display: block; }
   #reader video, #readerKunde video,
   #reader img, #readerKunde img {
     width: 100% !important;
     height: auto !important;
+    position: relative;
+    top: 50%;
+    transform: translateY(-50%);
   }
   .scan-error {
     color: #d93025;
@@ -243,18 +248,13 @@
     }
     function scanConfig() {
       return {
-        fps: 10,
+        fps: 20,
         qrbox: { width: 190, height: 65 },
+        disableFlip: true,
         formatsToSupport: [
-          Html5QrcodeSupportedFormats.QR_CODE,
           Html5QrcodeSupportedFormats.CODE_128,
           Html5QrcodeSupportedFormats.CODE_39,
-          Html5QrcodeSupportedFormats.CODE_93,
-          Html5QrcodeSupportedFormats.CODABAR,
           Html5QrcodeSupportedFormats.EAN_13,
-          Html5QrcodeSupportedFormats.EAN_8,
-          Html5QrcodeSupportedFormats.UPC_A,
-          Html5QrcodeSupportedFormats.UPC_E,
           Html5QrcodeSupportedFormats.ITF
         ],
         experimentalFeatures: {
@@ -408,4 +408,3 @@
   </script>
 </body>
 </html>
-
