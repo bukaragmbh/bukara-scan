@@ -99,18 +99,23 @@
     background: #2c3e40;
   }
   .scan-button:active { background: #1c2a2c; }
-  #reader {
+  #reader, #readerKunde {
     display: none;
     margin-top: 10px;
     border-radius: 4px;
     overflow: hidden;
     border: 2px solid #00A597;
   }
-  #reader.active { display: block; }
+  #reader.active, #readerKunde.active { display: block; }
   .scan-error {
     color: #d93025;
     font-size: 13px;
     margin-top: 6px;
+  }
+  .optional-hint {
+    font-weight: normal;
+    color: #888;
+    font-size: 12px;
   }
   .scan-controls {
     display: flex;
@@ -188,6 +193,14 @@
       <div id="scanError" class="scan-error"></div>
       <div id="scanDebug" class="scan-debug"></div>
 
+      <label for="kunde">Kunde <span class="optional-hint">(nur beim allerersten Scan)</span></label>
+      <div class="planid-row">
+        <input type="text" id="kunde" name="kunde">
+        <button type="button" id="scanKundeBtn" class="scan-button">📷 Scannen</button>
+      </div>
+      <div id="readerKunde"></div>
+      <div id="scanErrorKunde" class="scan-error"></div>
+
       <label for="bemerkung">Bemerkung</label>
       <textarea id="bemerkung" name="bemerkung" rows="3"></textarea>
 
@@ -237,8 +250,8 @@
 
     var torchOn = false;
 
-    function setupPostStartControls() {
-      // Kamera-Fähigkeiten prüfen (Blitz, Zoom) und Steuerelemente ggf. einblenden
+    function setupPostStartControls(readerDivId) {
+      if (readerDivId !== 'reader') return;
       try {
         var caps = html5QrCode.getRunningTrackCapabilities();
 
@@ -267,7 +280,6 @@
         // Fähigkeiten nicht abfragbar - Steuerelemente einfach verborgen lassen
       }
 
-      // Nachträglich höhere Auflösung versuchen (best effort, bricht nichts falls nicht unterstützt)
       html5QrCode.applyVideoConstraints({
         advanced: [{ width: 1920, height: 1080 }]
       }).catch(function () {});
@@ -292,50 +304,66 @@
       }).catch(function () {});
     });
 
-    document.getElementById('scanBtn').addEventListener('click', function () {
-      var readerDiv = document.getElementById('reader');
-      var errorDiv = document.getElementById('scanError');
+    function startScannerFor(targetInputId, readerDivId, errorDivId, btnId) {
+      var readerDiv = document.getElementById(readerDivId);
+      var errorDiv = document.getElementById(errorDivId);
+      var btn = document.getElementById(btnId);
       errorDiv.textContent = '';
 
-      if (scanning) {
+      if (scanning === readerDivId) {
         stopScanner();
         return;
       }
+      if (scanning) {
+        stopScanner();
+      }
 
       readerDiv.classList.add('active');
-      scanning = true;
-      document.getElementById('scanBtn').textContent = '✕ Abbrechen';
-      html5QrCode = new Html5Qrcode('reader');
+      scanning = readerDivId;
+      btn.textContent = '✕ Abbrechen';
+      html5QrCode = new Html5Qrcode(readerDivId);
+      activeReaderDivId = readerDivId;
+      activeBtnId = btnId;
 
-      // "environment" als weicher (ideal) Wunsch statt harter (exact) Vorgabe:
-      // wählt auf Handys zuverlässig die Rückkamera, bricht aber nicht hart ab,
-      // falls (z.B. am Laptop) keine Rückkamera existiert. Nur EIN start()-Aufruf,
-      // um den "already under transition"-Konflikt der Bibliothek zu vermeiden.
-      // WICHTIG: dieses Objekt darf laut Bibliothek nur genau 1 Schlüssel haben,
-      // Auflösung kann hier nicht mit übergeben werden.
       var videoConstraints = { facingMode: 'environment' };
 
       html5QrCode.start(
         videoConstraints,
         scanConfig(),
-        onScanSuccess,
+        function (decodedText) {
+          document.getElementById(targetInputId).value = decodedText;
+          stopScanner();
+        },
         onScanFailure
       ).then(function () {
-        setupPostStartControls();
+        setupPostStartControls(readerDivId);
       }).catch(function (err) {
         var msg = (err && err.message) ? err.message : String(err);
         errorDiv.textContent = 'Kamera konnte nicht gestartet werden: ' + msg;
         scanning = false;
-        document.getElementById('scanBtn').textContent = '📷 Scannen';
+        btn.textContent = '📷 Scannen';
         readerDiv.classList.remove('active');
       });
+    }
+
+    var activeReaderDivId = null;
+    var activeBtnId = null;
+
+    document.getElementById('scanBtn').addEventListener('click', function () {
+      startScannerFor('planId', 'reader', 'scanError', 'scanBtn');
+    });
+
+    document.getElementById('scanKundeBtn').addEventListener('click', function () {
+      startScannerFor('kunde', 'readerKunde', 'scanErrorKunde', 'scanKundeBtn');
     });
 
     function stopScanner() {
       if (html5QrCode && scanning) {
+        var readerDivId = activeReaderDivId;
+        var btnId = activeBtnId;
         html5QrCode.stop().then(function () {
-          document.getElementById('reader').classList.remove('active');
-          document.getElementById('scanBtn').textContent = '📷 Scannen';
+          document.getElementById(readerDivId).classList.remove('active');
+          document.getElementById(btnId).textContent = '📷 Scannen';
           document.getElementById('torchBtn').style.display = 'none';
           document.getElementById('zoomWrapper').style.display = 'none';
           scanning = false;
@@ -349,4 +377,3 @@
   </script>
 </body>
 </html>
-
