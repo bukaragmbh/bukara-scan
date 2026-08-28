@@ -249,8 +249,7 @@
     }
     function scanConfig() {
       return {
-        fps: 20,
-        disableFlip: true,
+        fps: 10,
         formatsToSupport: [
           Html5QrcodeSupportedFormats.CODE_128,
           Html5QrcodeSupportedFormats.CODE_39,
@@ -259,6 +258,11 @@
         ],
         experimentalFeatures: {
           useBarCodeDetectorIfSupported: true
+        },
+        videoConstraints: {
+          facingMode: 'environment',
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
         }
       };
     }
@@ -408,3 +412,4 @@
   </script>
 </body>
 </html>
+
